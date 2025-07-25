@@ -20,6 +20,8 @@ from typing_extensions import Annotated
 from titiler.core.resources.enums import ImageType, MediaType
 from titiler.core.utils import accept_media_type
 
+import matplotlib
+
 
 def create_colormap_dependency(cmap: ColorMaps) -> Callable:
     """Create Colormap Dependency."""
@@ -32,6 +34,10 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
         colormap: Annotated[
             Optional[str], Query(description="JSON encoded custom Colormap")
         ] = None,
+        colormap_type: Annotated[
+            Literal["explicit", "linear"],
+            Query(description="User input colormap type."),
+        ] = "explicit",
     ):
         if colormap_name:
             return cmap.get(colormap_name)
@@ -49,11 +55,27 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
                 if isinstance(c, Sequence):
                     c = [(tuple(inter), parse_color(v)) for (inter, v) in c]
 
-                return c
             except json.JSONDecodeError as e:
                 raise HTTPException(
                     status_code=400, detail="Could not parse the colormap value."
                 ) from e
+
+            if colormap_type == "linear":
+                # input colormap has to start from 0 to 255
+                c = matplotlib.colors.LinearSegmentedColormap.from_list(
+                    'custom',
+                    [
+                        (k / 255, matplotlib.colors.to_hex([v / 255 for v in rgba]))
+                        for (k, rgba) in c.items()
+                    ],
+                    256,
+                )
+                x = numpy.linspace(0, 1, 256)
+                cmap_vals = c(x)[:, :]
+                cmap_uint8 = (cmap_vals * 255).astype('uint8')
+                c = {idx: value.tolist() for idx, value in enumerate(cmap_uint8)}
+
+            return c
 
         return None
 
