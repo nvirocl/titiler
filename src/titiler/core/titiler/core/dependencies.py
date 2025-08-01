@@ -20,7 +20,7 @@ from typing_extensions import Annotated
 from titiler.core.resources.enums import ImageType, MediaType
 from titiler.core.utils import accept_media_type
 
-import matplotlib
+import matplotlib.colors
 
 
 def create_colormap_dependency(cmap: ColorMaps) -> Callable:
@@ -61,18 +61,20 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
                 ) from e
 
             if colormap_type == "linear":
-                # input colormap has to start from 0 to 255
+                MAX_COLOR_VALUE = 255
+                COLORMAP_SIZE = 256
+                # input colormap keys must be within the range 0-255 (0 and 255 must be included)
                 c = matplotlib.colors.LinearSegmentedColormap.from_list(
                     'custom',
                     [
-                        (k / 255, matplotlib.colors.to_hex([v / 255 for v in rgba]))
+                        (k / MAX_COLOR_VALUE, matplotlib.colors.to_hex([v / MAX_COLOR_VALUE for v in rgba]))
                         for (k, rgba) in c.items()
                     ],
-                    256,
+                    COLORMAP_SIZE,
                 )
-                x = numpy.linspace(0, 1, 256)
+                x = numpy.linspace(0, 1, COLORMAP_SIZE)
                 cmap_vals = c(x)[:, :]
-                cmap_uint8 = (cmap_vals * 255).astype('uint8')
+                cmap_uint8 = (cmap_vals * MAX_COLOR_VALUE).astype('uint8')
                 c = {idx: value.tolist() for idx, value in enumerate(cmap_uint8)}
 
             return c
