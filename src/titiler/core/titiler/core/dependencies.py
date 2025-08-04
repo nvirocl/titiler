@@ -20,7 +20,25 @@ from typing_extensions import Annotated
 from titiler.core.resources.enums import ImageType, MediaType
 from titiler.core.utils import accept_media_type
 
-import matplotlib.colors
+
+# --- Matplotlib colors replacement ---
+def to_hex(rgb):
+    """Convert [0-1] or [0-255] RGB(A) to hex string."""
+    rgb = [int(x * 255) if x <= 1 else int(x) for x in rgb[:3]]
+    return '#{:02x}{:02x}{:02x}'.format(*rgb)
+
+
+def linear_colormap_from_list(color_list, N=256):
+    """Create a linear segmented colormap from a list of (position, hexcolor) tuples."""
+    x = numpy.linspace(0, 1, N)
+    positions, hexcolors = zip(*color_list)
+    positions = numpy.array(positions)
+    colors = numpy.array([tuple(int(h[i:i+2], 16) for i in (1, 3, 5)) for h in hexcolors])
+    result = numpy.empty((N, 3), dtype=numpy.uint8)
+    for i in range(3):
+        result[:, i] = numpy.interp(x, positions, colors[:, i])
+    return result
+# --- End replacement ---
 
 
 def create_colormap_dependency(cmap: ColorMaps) -> Callable:
@@ -63,18 +81,12 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
             if colormap_type == "linear":
                 MAX_COLOR_VALUE = 255
                 COLORMAP_SIZE = 256
-                # input colormap keys must be within the range 0-255 (0 and 255 must be included)
-                c = matplotlib.colors.LinearSegmentedColormap.from_list(
-                    'custom',
-                    [
-                        (k / MAX_COLOR_VALUE, matplotlib.colors.to_hex([v / MAX_COLOR_VALUE for v in rgba]))
-                        for (k, rgba) in c.items()
-                    ],
-                    COLORMAP_SIZE,
-                )
-                x = numpy.linspace(0, 1, COLORMAP_SIZE)
-                cmap_vals = c(x)[:, :]
-                cmap_uint8 = (cmap_vals * MAX_COLOR_VALUE).astype('uint8')
+                # input colormap keys must be within the range 0-255 (0 y 255 incluidos)
+                color_list = [
+                    (k / MAX_COLOR_VALUE, to_hex([v / MAX_COLOR_VALUE for v in rgba]))
+                    for (k, rgba) in c.items()
+                ]
+                cmap_uint8 = linear_colormap_from_list(color_list, COLORMAP_SIZE)
                 c = {idx: value.tolist() for idx, value in enumerate(cmap_uint8)}
 
             return c
