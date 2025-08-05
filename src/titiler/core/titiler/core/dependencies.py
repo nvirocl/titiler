@@ -29,13 +29,24 @@ def to_hex(rgb):
 
 
 def linear_colormap_from_list(color_list, N=256):
-    """Create a linear segmented colormap from a list of (position, hexcolor) tuples."""
+    """Create a linear segmented colormap from a list of (position, hexcolor) tuples, like matplotlib."""
     x = numpy.linspace(0, 1, N)
     positions, hexcolors = zip(*color_list)
     positions = numpy.array(positions)
-    colors = numpy.array([tuple(int(h[i:i+2], 16) for i in (1, 3, 5)) for h in hexcolors])
-    result = numpy.empty((N, 3), dtype=numpy.uint8)
-    for i in range(3):
+    # Parse hexcolors to RGBA (0-255)
+    def hex_to_rgba(h):
+        h = h.lstrip('#')
+        if len(h) == 6:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            a = 255
+        elif len(h) == 8:
+            r, g, b, a = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), int(h[6:8], 16)
+        else:
+            raise ValueError(f"Invalid hex color: {h}")
+        return (r, g, b, a)
+    colors = numpy.array([hex_to_rgba(h) for h in hexcolors], dtype=numpy.float32)
+    result = numpy.empty((N, 4), dtype=numpy.uint8)
+    for i in range(4):
         result[:, i] = numpy.interp(x, positions, colors[:, i])
     return result
 # --- End replacement ---
