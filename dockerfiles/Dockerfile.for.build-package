@@ -1,0 +1,16 @@
+ARG PYTHON_VERSION=3.12
+
+FROM --platform=linux/amd64 bitnami/python:${PYTHON_VERSION}
+RUN apt update && apt upgrade -y \
+  && apt install curl -y \
+  && rm -rf /var/lib/apt/lists/*
+
+
+RUN python -m pip install -U pip
+
+COPY src/titiler/ /tmp/titiler/
+RUN python -m pip install /tmp/titiler/core /tmp/titiler/application --no-cache-dir --upgrade
+
+RUN python -m pip install build
+
+CMD [ "sh", "-c", "for pkg in core application; do python -m build /tmp/titiler/$pkg -o /dist; done" ]
