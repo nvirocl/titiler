@@ -78,22 +78,22 @@ En resumen, se tienen los siguientes comandos:
 - Luego, para desplegar en producción, se debe ejecutar (si ya has pasado por el 1er deploy):
 
   ```bash
-  cdk deploy --app "uv run python app.py"
+  cdk deploy
   ```
   Al correr este comando se hará un build para soportar lambda con los paquetes generados o preexistentes del paso anterior. Luego de esto se procederán a mostrar los cambios y se solicitará confirmación para proceder con el despliegue. **Nota que este proceso puede tardar un par de minutos debido a la construcción de la imagen de lambda y la carga de los paquetes.**
 
 
 ### Primer deploy
 
-Adjunto los comandos que me funcionaron, en la documentación oficial del repo se mencionaban con `uv` pero estos no funcionaron, además tampoco se estaba tomando la config del archivo `cdk.json` por lo que tuve que agregar el parámetro `--app "uv run python app.py"` para que tomara la configuración correcta.
+Adjunto los comandos que me funcionaron, en la documentación oficial del repo se mencionaban con `uv` pero estos no funcionaron.
 
 ```bash
 # prepara la cuenta de aws para recibir despliegues con cdk
-cdk bootstrap --app "uv run python app.py"
+cdk bootstrap
 
 # pre-genera el template de cloudformation
-cdk synth --app "uv run python app.py"
+cdk synth
 
 # despliega el stack en aws
-cdk deploy --app "uv run python app.py"
+cdk deploy
 ```
