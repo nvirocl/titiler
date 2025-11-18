@@ -8,6 +8,7 @@ from aws_cdk import aws_apigatewayv2 as apigw
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda
 from aws_cdk import aws_logs as logs
+from aws_cdk.aws_apigatewayv2_authorizers import HttpJwtAuthorizer
 from aws_cdk.aws_apigatewayv2_integrations import HttpLambdaIntegration
 from constructs import Construct
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,7 @@ class StackSettings(BaseSettings):
 
     name: str = "titiler"
     stage: str = "production"
+    include_xarray: bool = False
 
     owner: Optional[str] = None
     client: Optional[str] = None
@@ -57,6 +59,14 @@ class StackSettings(BaseSettings):
     # Default: - No specific limit - account limit.
     max_concurrent: Optional[int] = None
 
+    # To authorization with Auth0
+    jwt_issuer: str = "" # e.g: "https://some-domain.us.auth0.com/"
+    jwt_audience: List[str] = [""] # e.g: ["https://some-domain.us.auth0.com/api/v2/"]
+
+    # CORS origins
+    cors_origins: List[str] = [ '*' ]
+    cors_headers: List[str] = [ '*' ]
+
     model_config = SettingsConfigDict(env_prefix="TITILER_STACK_", env_file=".env")
 
 
@@ -80,6 +90,11 @@ class titilerLambdaStack(Stack):
         concurrent: Optional[int] = None,
         permissions: Optional[List[iam.PolicyStatement]] = None,
         environment: Optional[Dict] = None,
+        jwt_issuer: Optional[str] = None,
+        jwt_audience: Optional[List[str]] = None,
+        cors_origins: Optional[List[str]] = None,
+        cors_headers: Optional[List[str]] = None,
+        include_xarray: bool = False,
         code_dir: str = "./",
         **kwargs: Any,
     ) -> None:
@@ -113,14 +128,44 @@ class titilerLambdaStack(Stack):
         for perm in permissions:
             lambda_function.add_to_role_policy(perm)
 
+        authorizer = HttpJwtAuthorizer(
+            "Auth0Authorizer", 
+            jwt_issuer=jwt_issuer,
+            jwt_audience=jwt_audience,
+        )
+
         api = apigw.HttpApi(
             self,
             f"{id}-endpoint",
-            default_integration=HttpLambdaIntegration(
-                f"{id}-integration", handler=lambda_function
+            default_authorizer=authorizer,
+            cors_preflight=apigw.CorsPreflightOptions(
+                allow_origins=cors_origins,
+                allow_headers=cors_headers,
+                allow_methods=[apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.OPTIONS],
+                allow_credentials=True,
             ),
         )
+
+        lambda_integration = HttpLambdaIntegration(
+            f"{id}-integration", handler=lambda_function
+        )
+
+        api.add_routes(
+            path='/cog/WebMercatorQuad/{proxy+}',
+            methods=[apigw.HttpMethod.GET],
+            integration=lambda_integration,
+        )
+
+        api.add_routes(
+            path='/cog/tiles/WebMercatorQuad/{proxy+}',
+            methods=[apigw.HttpMethod.GET],
+            integration=lambda_integration,
+        )
+
         CfnOutput(self, "Endpoint", value=api.url)
+
+        if not include_xarray:
+            return
 
         # Xarray
         xarray_lambda_function = aws_lambda.Function(
@@ -178,6 +223,11 @@ lambda_stack = titilerLambdaStack(
     concurrent=settings.max_concurrent,
     permissions=perms,
     environment=settings.env,
+    jwt_issuer=settings.jwt_issuer,
+    jwt_audience=settings.jwt_audience,
+    cors_origins=settings.cors_origins,
+    cors_headers=settings.cors_headers,
+    include_xarray=settings.include_xarray,
 )
 
 # Tag infrastructure
