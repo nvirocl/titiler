@@ -53,7 +53,11 @@ https://developmentseed.org/titiler/
 
 ## Producción
 
-Para el proceso de deploy necesitas tener `cdk`, con el siguiente comando puedes instalarlo:
+### Prerequisitos
+
+* Tener instalado `uv`
+
+* Instalar `cdk`, con el siguiente comando puedes instalarlo:
 
 ```bash
 npm install -g aws-cdk@^2
@@ -75,7 +79,7 @@ En resumen, se tienen los siguientes comandos:
   ```
 
   Con esto quedarán generados archivos `.whl` en la carpeta `deployment/aws/lambda/dist/` que luego serán utilizados en el despliegue.
-- Luego, para desplegar en producción, se debe ejecutar (si ya has pasado por el 1er deploy):
+- Luego, para desplegar en producción, se debe ejecutar desde `deployment/aws` (si ya has pasado por el 1er deploy):
 
   ```bash
   cdk deploy
