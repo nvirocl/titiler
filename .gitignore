@@ -108,4 +108,6 @@ ENV/
 cdk.out/
 deployment/k8s/titiler/values-test.yaml
 
-.vscode/
+nviro/*
+
+.DS_Store
