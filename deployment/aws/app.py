@@ -60,12 +60,12 @@ class StackSettings(BaseSettings):
     max_concurrent: Optional[int] = None
 
     # To authorization with Auth0
-    jwt_issuer: str = "" # e.g: "https://some-domain.us.auth0.com/"
-    jwt_audience: List[str] = [""] # e.g: ["https://some-domain.us.auth0.com/api/v2/"]
+    jwt_issuer: str = ""  # e.g: "https://some-domain.us.auth0.com/"
+    jwt_audience: List[str] = [""]  # e.g: ["https://some-domain.us.auth0.com/api/v2/"]
 
     # CORS origins
-    cors_origins: List[str] = [ '*' ]
-    cors_headers: List[str] = [ '*' ]
+    cors_origins: List[str] = ["*"]
+    cors_headers: List[str] = ["*"]
 
     model_config = SettingsConfigDict(env_prefix="TITILER_STACK_", env_file=".env")
 
@@ -129,7 +129,7 @@ class titilerLambdaStack(Stack):
             lambda_function.add_to_role_policy(perm)
 
         authorizer = HttpJwtAuthorizer(
-            "Auth0Authorizer", 
+            "Auth0Authorizer",
             jwt_issuer=jwt_issuer,
             jwt_audience=jwt_audience,
         )
@@ -151,13 +151,13 @@ class titilerLambdaStack(Stack):
         )
 
         api.add_routes(
-            path='/cog/WebMercatorQuad/{proxy+}',
+            path="/cog/WebMercatorQuad/{proxy+}",
             methods=[apigw.HttpMethod.GET],
             integration=lambda_integration,
         )
 
         api.add_routes(
-            path='/cog/tiles/WebMercatorQuad/{proxy+}',
+            path="/cog/tiles/WebMercatorQuad/{proxy+}",
             methods=[apigw.HttpMethod.GET],
             integration=lambda_integration,
         )
