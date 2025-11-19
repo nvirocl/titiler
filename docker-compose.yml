@@ -43,7 +43,7 @@ services:
     depends_on:
       - otel-collector
     volumes:
-      - ./:/data
+      - ./nviro:/data
 
   titiler-gunicorn:
     extends:

@@ -21,6 +21,46 @@ from titiler.core.resources.enums import ImageType, MediaType
 from titiler.core.utils import accept_media_type
 
 
+# --- Matplotlib colors replacement ---
+def to_hex(rgb):
+    """Convert [0-1] or [0-255] RGB(A) to hex string."""
+    rgb = [int(x * 255) if x <= 1 else int(x) for x in rgb[:3]]
+    return "#{:02x}{:02x}{:02x}".format(*rgb)
+
+
+def linear_colormap_from_list(color_list, N=256):
+    """Create a linear segmented colormap from a list of (position, hexcolor) tuples, like matplotlib."""
+    x = numpy.linspace(0, 1, N)
+    positions, hexcolors = zip(*color_list)
+    positions = numpy.array(positions)
+
+    # Parse hexcolors to RGBA (0-255)
+    def hex_to_rgba(h):
+        h = h.lstrip("#")
+        if len(h) == 6:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            a = 255
+        elif len(h) == 8:
+            r, g, b, a = (
+                int(h[0:2], 16),
+                int(h[2:4], 16),
+                int(h[4:6], 16),
+                int(h[6:8], 16),
+            )
+        else:
+            raise ValueError(f"Invalid hex color: {h}")
+        return (r, g, b, a)
+
+    colors = numpy.array([hex_to_rgba(h) for h in hexcolors], dtype=numpy.float32)
+    result = numpy.empty((N, 4), dtype=numpy.uint8)
+    for i in range(4):
+        result[:, i] = numpy.interp(x, positions, colors[:, i])
+    return result
+
+
+# --- End replacement ---
+
+
 def create_colormap_dependency(cmap: ColorMaps) -> Callable:
     """Create Colormap Dependency."""
 
@@ -32,6 +72,10 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
         colormap: Annotated[
             Optional[str], Query(description="JSON encoded custom Colormap")
         ] = None,
+        colormap_type: Annotated[
+            Literal["explicit", "linear"],
+            Query(description="User input colormap type."),
+        ] = "explicit",
     ):
         if colormap_name:
             return cmap.get(colormap_name)
@@ -49,11 +93,23 @@ def create_colormap_dependency(cmap: ColorMaps) -> Callable:
                 if isinstance(c, Sequence):
                     c = [(tuple(inter), parse_color(v)) for (inter, v) in c]
 
-                return c
             except json.JSONDecodeError as e:
                 raise HTTPException(
                     status_code=400, detail="Could not parse the colormap value."
                 ) from e
+
+            if colormap_type == "linear":
+                MAX_COLOR_VALUE = 255
+                COLORMAP_SIZE = 256
+                # input colormap keys must be within the range 0-255 (0 y 255 incluidos)
+                color_list = [
+                    (k / MAX_COLOR_VALUE, to_hex([v / MAX_COLOR_VALUE for v in rgba]))
+                    for (k, rgba) in c.items()
+                ]
+                cmap_uint8 = linear_colormap_from_list(color_list, COLORMAP_SIZE)
+                c = {idx: value.tolist() for idx, value in enumerate(cmap_uint8)}
+
+            return c
 
         return None
 
