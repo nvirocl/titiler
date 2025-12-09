@@ -162,6 +162,12 @@ class titilerLambdaStack(Stack):
             integration=lambda_integration,
         )
 
+        api.add_routes(
+            path="/cog/point/{proxy+}",
+            methods=[apigw.HttpMethod.GET],
+            integration=lambda_integration,
+        )
+
         CfnOutput(self, "Endpoint", value=api.url)
 
         if not include_xarray:
